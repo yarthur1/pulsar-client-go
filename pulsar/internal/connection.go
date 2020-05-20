@@ -122,7 +122,7 @@ type incomingCmd struct {
 }
 
 type connection struct {
-	sync.Mutex
+	sync.Mutex      //匿名字段
 	cond              *sync.Cond
 	state             connectionState
 	connectionTimeout time.Duration
@@ -137,19 +137,19 @@ type connection struct {
 
 	lastDataReceivedLock sync.Mutex
 	lastDataReceivedTime time.Time
-	pingTicker           *time.Ticker
-	pingCheckTicker      *time.Ticker
+	pingTicker           *time.Ticker   //发送ping
+	pingCheckTicker      *time.Ticker  //接收ping
 
 	log *log.Entry
 
 	requestIDGenerator uint64
 
-	incomingRequestsCh chan *request
-	incomingCmdCh      chan *incomingCmd
+	incomingRequestsCh chan *request       //
+	incomingCmdCh      chan *incomingCmd   //
 	closeCh            chan interface{}
-	writeRequestsCh    chan []byte
+	writeRequestsCh    chan []byte         //
 
-	pendingReqs map[uint64]*request
+	pendingReqs map[uint64]*request     //记录发送的命令请求 id req
 	listeners   map[uint64]ConnectionListener
 
 	consumerHandlersLock sync.RWMutex
@@ -168,9 +168,9 @@ func newConnection(logicalAddr *url.URL, physicalAddr *url.URL, tlsOptions *TLSO
 		physicalAddr:         physicalAddr,
 		writeBuffer:          NewBuffer(4096),
 		log:                  log.WithField("remote_addr", physicalAddr),
-		pendingReqs:          make(map[uint64]*request),
+		pendingReqs:          make(map[uint64]*request),   //****
 		lastDataReceivedTime: time.Now(),
-		pingTicker:           time.NewTicker(keepAliveInterval),
+		pingTicker:           time.NewTicker(keepAliveInterval),    //30S
 		pingCheckTicker:      time.NewTicker(keepAliveInterval),
 		tlsOptions:           tlsOptions,
 		auth:                 auth,
@@ -202,7 +202,7 @@ func (c *connection) start() {
 	}()
 }
 
-func (c *connection) connect() bool {
+func (c *connection) connect() bool {   //*****physicalAddr
 	c.log.Info("Connecting to broker")
 
 	var (
@@ -268,7 +268,7 @@ func (c *connection) doHandshake() bool {
 		cmdConnect.ProxyToBrokerUrl = proto.String(c.logicalAddr.Host)
 	}
 	c.writeCommand(baseCommand(pb.BaseCommand_CONNECT, cmdConnect))
-	cmd, _, err := c.reader.readSingleCommand()
+	cmd, _, err := c.reader.readSingleCommand()    //阻塞
 	if err != nil {
 		c.log.WithError(err).Warn("Failed to perform initial handshake")
 		return false
@@ -319,16 +319,16 @@ func (c *connection) run() {
 			if req == nil {
 				return
 			}
-			c.internalSendRequest(req)
+			c.internalSendRequest(req)   //发送basecmd  rpc_client使用SendRequest SendRequestNoWait
 
-		case cmd := <-c.incomingCmdCh:
+		case cmd := <-c.incomingCmdCh:  //处理接收的cmd connection_reader调用receivedCommand 所有接收到的数据
 			c.internalReceivedCommand(cmd.cmd, cmd.headersAndPayload)
 
-		case data := <-c.writeRequestsCh:
+		case data := <-c.writeRequestsCh:  //发送batch数据
 			if data == nil {
 				return
 			}
-			c.internalWriteData(data)
+			c.internalWriteData(data)  //发送batch数据
 
 		case <-c.pingTicker.C:
 			c.sendPing()
@@ -353,7 +353,7 @@ func (c *connection) runPingCheck() {
 	}
 }
 
-func (c *connection) WriteData(data []byte) {
+func (c *connection) WriteData(data []byte) { //相当于直接发送
 	c.writeRequestsCh <- data
 }
 
@@ -433,7 +433,7 @@ func (c *connection) internalReceivedCommand(cmd *pb.BaseCommand, headersAndPayl
 	case pb.BaseCommand_AUTH_CHALLENGE:
 		c.handleAuthChallenge(cmd.GetAuthChallenge())
 
-	case pb.BaseCommand_SEND_RECEIPT:
+	case pb.BaseCommand_SEND_RECEIPT:      //producer
 		c.handleSendReceipt(cmd.GetSendReceipt())
 
 	case pb.BaseCommand_SEND_ERROR:
@@ -446,7 +446,7 @@ func (c *connection) internalReceivedCommand(cmd *pb.BaseCommand, headersAndPayl
 	case pb.BaseCommand_PONG:
 		c.handlePong()
 
-	case pb.BaseCommand_ACTIVE_CONSUMER_CHANGE:
+	case pb.BaseCommand_ACTIVE_CONSUMER_CHANGE:  //?
 
 	default:
 		c.log.Errorf("Received invalid command type: %s", cmd.Type)
@@ -454,7 +454,7 @@ func (c *connection) internalReceivedCommand(cmd *pb.BaseCommand, headersAndPayl
 	}
 }
 
-func (c *connection) Write(data []byte) {
+func (c *connection) Write(data []byte) {   //没用过？
 	c.writeRequestsCh <- data
 }
 
@@ -521,7 +521,7 @@ func (c *connection) handleSendReceipt(response *pb.CommandSendReceipt) {
 	}
 }
 
-func (c *connection) handleMessage(response *pb.CommandMessage, payload Buffer) {
+func (c *connection) handleMessage(response *pb.CommandMessage, payload Buffer) {  //接收消息
 	c.log.Debug("Got Message: ", response)
 	consumerID := response.GetConsumerId()
 	if consumer, ok := c.consumerHandler(consumerID); ok {
@@ -666,7 +666,7 @@ func (c *connection) Close() {
 		listener.ConnectionClosed()
 	}
 
-	for _, req := range c.pendingReqs {
+	for _, req := range c.pendingReqs {      //
 		req.callback(nil, errors.New("connection closed"))
 	}
 

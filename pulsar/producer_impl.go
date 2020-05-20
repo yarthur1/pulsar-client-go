@@ -105,7 +105,7 @@ func newProducer(client *client, options *ProducerOptions) (*producer, error) {
 }
 
 func (p *producer) internalCreatePartitionsProducers() error {
-	partitions, err := p.client.TopicPartitions(p.topic)
+	partitions, err := p.client.TopicPartitions(p.topic)  //?
 	if err != nil {
 		return err
 	}
@@ -145,7 +145,7 @@ func (p *producer) internalCreatePartitionsProducers() error {
 	partitionsToAdd := newNumPartitions - oldNumPartitions
 	c := make(chan ProducerError, partitionsToAdd)
 
-	for partitionIdx := oldNumPartitions; partitionIdx < newNumPartitions; partitionIdx++ {
+	for partitionIdx := oldNumPartitions; partitionIdx < newNumPartitions; partitionIdx++ {  //?
 		partition := partitions[partitionIdx]
 
 		go func(partitionIdx int, partition string) {
@@ -251,5 +251,5 @@ func (p *producer) Close() {
 	for _, pp := range p.producers {
 		pp.Close()
 	}
-	p.client.handlers.Del(p)
+	p.client.handlers.Del(p)  //
 }

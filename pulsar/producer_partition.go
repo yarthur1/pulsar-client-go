@@ -50,15 +50,15 @@ type partitionProducer struct {
 	options             *ProducerOptions
 	producerName        string
 	producerID          uint64
-	batchBuilder        *internal.BatchBuilder
-	sequenceIDGenerator *uint64
+	batchBuilder        *internal.BatchBuilder   //构建批数据
+	sequenceIDGenerator *uint64     //初始值为create_producer resp.GetLastSequenceId() + 1
 	batchFlushTicker    *time.Ticker
 
 	// Channel where app is posting messages to be published
-	eventsChan chan interface{}
+	eventsChan chan interface{}            //10
 
-	publishSemaphore internal.Semaphore
-	pendingQueue     internal.BlockingQueue
+	publishSemaphore internal.Semaphore   //maxPendingMessages
+	pendingQueue     internal.BlockingQueue    //批数据发送之前 会放到队列里面
 	lastSequenceID   int64
 
 	partitionIdx int
@@ -88,8 +88,8 @@ func newPartitionProducer(client *client, topic string, options *ProducerOptions
 		options:          options,
 		producerID:       client.rpcClient.NewProducerID(),
 		eventsChan:       make(chan interface{}, 10),
-		batchFlushTicker: time.NewTicker(batchingMaxPublishDelay),
-		publishSemaphore: make(internal.Semaphore, maxPendingMessages),
+		batchFlushTicker: time.NewTicker(batchingMaxPublishDelay),           //max delay
+		publishSemaphore: make(internal.Semaphore, maxPendingMessages),     //****
 		pendingQueue:     internal.NewBlockingQueue(maxPendingMessages),
 		lastSequenceID:   -1,
 		partitionIdx:     partitionIdx,
@@ -115,7 +115,7 @@ func newPartitionProducer(client *client, topic string, options *ProducerOptions
 }
 
 func (p *partitionProducer) grabCnx() error {
-	lr, err := p.client.lookupService.Lookup(p.topic)
+	lr, err := p.client.lookupService.Lookup(p.topic)  //
 	if err != nil {
 		p.log.WithError(err).Warn("Failed to lookup topic")
 		return err
@@ -158,13 +158,13 @@ func (p *partitionProducer) grabCnx() error {
 		p.sequenceIDGenerator = &nextSequenceID
 	}
 	p.cnx = res.Cnx
-	p.cnx.RegisterListener(p.producerID, p)
+	p.cnx.RegisterListener(p.producerID, p)   //partition-producer 是ConnectionListener
 	p.log.WithField("cnx", res.Cnx.ID()).Debug("Connected producer")
 
 	if p.pendingQueue.Size() > 0 {
 		p.log.Infof("Resending %d pending batches", p.pendingQueue.Size())
 		for it := p.pendingQueue.Iterator(); it.HasNext(); {
-			p.cnx.WriteData(it.Next().(*pendingItem).batchData)
+			p.cnx.WriteData(it.Next().(*pendingItem).batchData)  //
 		}
 	}
 	return nil
@@ -179,7 +179,7 @@ func (p *partitionProducer) ConnectionClosed() {
 }
 
 func (p *partitionProducer) reconnectToBroker() {
-	backoff := internal.Backoff{}
+	backoff := internal.Backoff{}       //退避算法
 	for {
 		if p.state != producerReady {
 			// Producer is already closing
@@ -229,7 +229,7 @@ func (p *partitionProducer) Name() string {
 	return p.producerName
 }
 
-func (p *partitionProducer) internalSend(request *sendRequest) {
+func (p *partitionProducer) internalSend(request *sendRequest) {    //发送单个请求
 	p.log.Debug("Received send request: ", *request)
 
 	msg := request.msg
@@ -241,7 +241,7 @@ func (p *partitionProducer) internalSend(request *sendRequest) {
 
 	sendAsBatch := !p.options.DisableBatching &&
 		msg.ReplicationClusters == nil &&
-		deliverAt.UnixNano() < 0
+		deliverAt.UnixNano() < 0   //如果没有设置，默认是负数
 
 	smm := &pb.SingleMessageMetadata{
 		PayloadSize: proto.Int(len(msg.Payload)),
@@ -263,11 +263,11 @@ func (p *partitionProducer) internalSend(request *sendRequest) {
 	if msg.SequenceID != nil {
 		sequenceID = uint64(*msg.SequenceID)
 	} else {
-		sequenceID = internal.GetAndAdd(p.sequenceIDGenerator, 1)
+		sequenceID = internal.GetAndAdd(p.sequenceIDGenerator, 1)  //*****
 	}
 
 	if sendAsBatch {
-		added := p.batchBuilder.Add(smm, sequenceID, msg.Payload, request,
+		added := p.batchBuilder.Add(smm, sequenceID, msg.Payload, request,  //确认request的callback在哪执行 以及ctx
 			msg.ReplicationClusters, deliverAt)
 		if !added {
 			// The current batch is full.. flush it and retry
@@ -276,7 +276,7 @@ func (p *partitionProducer) internalSend(request *sendRequest) {
 			// after flushing try again to add the current payload
 			if ok := p.batchBuilder.Add(smm, sequenceID, msg.Payload, request,
 				msg.ReplicationClusters, deliverAt); !ok {
-				p.log.WithField("size", len(msg.Payload)).
+				p.log.WithField("size", len(msg.Payload)).      //只是记录错误？ 不用callback?
 					WithField("sequenceID", sequenceID).
 					WithField("properties", msg.Properties).
 					Error("unable to add message to batch")
@@ -307,7 +307,7 @@ type pendingItem struct {
 	completed    bool
 }
 
-func (p *partitionProducer) internalFlushCurrentBatch() {
+func (p *partitionProducer) internalFlushCurrentBatch() {  //**** 一批数据一个sequenceID  第一个msg的ID producer真正发送数据
 	batchData, sequenceID, callbacks := p.batchBuilder.Flush()
 	if batchData == nil {
 		return
@@ -318,7 +318,7 @@ func (p *partitionProducer) internalFlushCurrentBatch() {
 		sequenceID:   sequenceID,
 		sendRequests: callbacks,
 	})
-	p.cnx.WriteData(batchData)
+	p.cnx.WriteData(batchData)  //向连接发送数据
 }
 
 func (p *partitionProducer) internalFlush(fr *flushRequest) {
@@ -351,7 +351,7 @@ func (p *partitionProducer) internalFlush(fr *flushRequest) {
 		},
 	}
 
-	pi.sendRequests = append(pi.sendRequests, sendReq)
+	pi.sendRequests = append(pi.sendRequests, sendReq)  //等待connection 调用ReceivedSendReceipt函数执行回调 flush返回
 }
 
 func (p *partitionProducer) Send(ctx context.Context, msg *ProducerMessage) (MessageID, error) {
@@ -365,7 +365,7 @@ func (p *partitionProducer) Send(ctx context.Context, msg *ProducerMessage) (Mes
 		err = e
 		msgID = ID
 		wg.Done()
-	}, true)
+	}, true)   //同步发送会立马flush
 
 	wg.Wait()
 	return msgID, err
@@ -378,7 +378,7 @@ func (p *partitionProducer) SendAsync(ctx context.Context, msg *ProducerMessage,
 		ctx:              ctx,
 		msg:              msg,
 		callback:         callback,
-		flushImmediately: false,
+		flushImmediately: false,    //异步发送不会立马flush
 	}
 	p.eventsChan <- sr
 }
@@ -395,7 +395,7 @@ func (p *partitionProducer) internalSendAsync(ctx context.Context, msg *Producer
 	p.eventsChan <- sr
 }
 
-func (p *partitionProducer) ReceivedSendReceipt(response *pb.CommandSendReceipt) {
+func (p *partitionProducer) ReceivedSendReceipt(response *pb.CommandSendReceipt) {  //connection handleSendReceipt函数调用
 	pi, ok := p.pendingQueue.Peek().(*pendingItem)
 
 	if !ok {
@@ -467,7 +467,7 @@ func (p *partitionProducer) LastSequenceID() int64 {
 	return atomic.LoadInt64(&p.lastSequenceID)
 }
 
-func (p *partitionProducer) Flush() error {
+func (p *partitionProducer) Flush() error {  //主动flush
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 

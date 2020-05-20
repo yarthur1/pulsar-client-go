@@ -5301,7 +5301,7 @@ func (m *CommandEndTxnOnSubscriptionResponse) GetMessage() string {
 	}
 	return ""
 }
-
+//protobuf 用法
 type BaseCommand struct {
 	Type                            *BaseCommand_Type                        `protobuf:"varint,1,req,name=type,enum=pulsar.proto.BaseCommand_Type" json:"type,omitempty"`
 	Connect                         *CommandConnect                          `protobuf:"bytes,2,opt,name=connect" json:"connect,omitempty"`

@@ -38,11 +38,11 @@ type Buffer interface {
 
 	Get(readerIndex uint32, size uint32) []byte
 
-	ReadableSlice() []byte
+	ReadableSlice() []byte  //返回当前可读的所有数据
 
-	WritableSlice() []byte
+	WritableSlice() []byte  //返回  b.data[b.writerIdx:]
 
-	// WrittenBytes advance the writer index when data was written in a slice
+	// WrittenBytes advance the writer index when data was written in a slice 向前移动索引
 	WrittenBytes(size uint32)
 
 	// MoveToFront copy the available portion of data at the beginning of the buffer
@@ -59,7 +59,7 @@ type Buffer interface {
 
 	Write(s []byte)
 
-	Put(writerIdx uint32, s []byte)
+	Put(writerIdx uint32, s []byte)         //指定索引覆盖
 	PutUint32(n uint32, writerIdx uint32)
 
 	Resize(newSize uint32)

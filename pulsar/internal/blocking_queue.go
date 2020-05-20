@@ -31,8 +31,8 @@ type BlockingQueue interface {
 	// Take dequeue one item, block until it's available
 	Take() interface{}
 
-	// Poll dequeue one item, return nil if queue is empty
-	Poll() interface{}
+	// Poll dequeue one item, return nil if queue is empty *****  出队不会阻塞
+	Poll() interface{}    //轮询
 
 	// Peek return the first item without dequeing, return nil if queue is empty
 	Peek() interface{}

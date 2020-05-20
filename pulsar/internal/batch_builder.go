@@ -103,7 +103,7 @@ func (bb *BatchBuilder) hasSpace(payload []byte) bool {
 	return bb.numMessages > 0 && (bb.buffer.ReadableBytes()+msgSize) > MaxBatchSize
 }
 
-// Add will add single message to batch.
+// Add will add single message to batch.    将replication相同的msg当成一批发送 batchbuilder的元数据只记录了第一个msg的ID
 func (bb *BatchBuilder) Add(metadata *pb.SingleMessageMetadata, sequenceID uint64, payload []byte,
 	callback interface{}, replicateTo []string, deliverAt time.Time) bool {
 	if replicateTo != nil && bb.numMessages != 0 {
@@ -122,7 +122,7 @@ func (bb *BatchBuilder) Add(metadata *pb.SingleMessageMetadata, sequenceID uint6
 	if bb.numMessages == 0 {
 		bb.msgMetadata.SequenceId = proto.Uint64(sequenceID)
 		bb.msgMetadata.PublishTime = proto.Uint64(TimestampMillis(time.Now()))
-		bb.msgMetadata.SequenceId = proto.Uint64(sequenceID)
+		bb.msgMetadata.SequenceId = proto.Uint64(sequenceID)                       //重复了
 		bb.msgMetadata.ProducerName = &bb.producerName
 		bb.msgMetadata.ReplicateTo = replicateTo
 		bb.msgMetadata.PartitionKey = metadata.PartitionKey
@@ -133,10 +133,10 @@ func (bb *BatchBuilder) Add(metadata *pb.SingleMessageMetadata, sequenceID uint6
 
 		bb.cmdSend.Send.SequenceId = proto.Uint64(sequenceID)
 	}
-	addSingleMessageToBatch(bb.buffer, metadata, payload)
+	addSingleMessageToBatch(bb.buffer, metadata, payload)  //往buffer里写元数据和payload
 
 	bb.numMessages++
-	bb.callbacks = append(bb.callbacks, callback)
+	bb.callbacks = append(bb.callbacks, callback)  //包含callback和ctx
 	return true
 }
 
@@ -148,7 +148,7 @@ func (bb *BatchBuilder) reset() {
 }
 
 // Flush all the messages buffered in the client and wait until all messages have been successfully persisted.
-func (bb *BatchBuilder) Flush() (batchData []byte, sequenceID uint64, callbacks []interface{}) {
+func (bb *BatchBuilder) Flush() (batchData []byte, sequenceID uint64, callbacks []interface{}) {     //返回的sequence ID为第一条msg的ID
 	log.Debug("BatchBuilder flush: messages: ", bb.numMessages)
 	if bb.numMessages == 0 {
 		// No-Op for empty batch
@@ -163,7 +163,7 @@ func (bb *BatchBuilder) Flush() (batchData []byte, sequenceID uint64, callbacks 
 	bb.msgMetadata.UncompressedSize = &uncompressedSize
 
 	buffer := NewBuffer(4096)
-	serializeBatch(buffer, bb.cmdSend, bb.msgMetadata, compressed)
+	serializeBatch(buffer, bb.cmdSend, bb.msgMetadata, compressed)  //将数据串行处理
 
 	callbacks = bb.callbacks
 	sequenceID = bb.cmdSend.Send.GetSequenceId()
