@@ -275,7 +275,7 @@ func (p *partitionProducer) internalSend(request *sendRequest) {    //发送单�
 			// after flushing try again to add the current payload
 			if ok := p.batchBuilder.Add(smm, sequenceID, msg.Payload, request,
 				msg.ReplicationClusters, deliverAt); !ok {
-				p.log.WithField("size", len(msg.Payload)).      //只是记录错误？ 不用callback?
+				p.log.WithField("size", len(msg.Payload)).      //只是记录错误？ 不用callback和释放信号?
 					WithField("sequenceID", sequenceID).
 					WithField("properties", msg.Properties).
 					Error("unable to add message to batch")
