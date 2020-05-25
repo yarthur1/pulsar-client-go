@@ -25,7 +25,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/apache/pulsar-client-go/pulsar/internal"
+	"github.com/yarthur1/pulsar-client-go/pulsar/internal"
 )
 
 type producer struct {
