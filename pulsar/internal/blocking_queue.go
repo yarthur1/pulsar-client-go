@@ -34,6 +34,11 @@ type BlockingQueue interface {
 	// Poll dequeue one item, return nil if queue is empty
 	Poll() interface{}
 
+	// Poll dequeue one item if the item meets the condition,
+	// return nil,true,false if queue is empty,
+	// return nil,false,false if not satisfy.
+	PollIfSatisfy(i func(item interface{}) bool) (item interface{}, empty bool, satisfy bool)
+
 	// Peek return the first item without dequeing, return nil if queue is empty
 	Peek() interface{}
 
@@ -45,7 +50,13 @@ type BlockingQueue interface {
 
 	// Iterator return an iterator for the queue
 	Iterator() BlockingQueueIterator
+
+	// if queue is not empty. iterate the whole queue and apply the function
+	IterateIfNonEmpty(fun IterateFunc)
 }
+
+// if func return true then continue iterate blocking queue
+type IterateFunc func(item interface{}) (continue_ bool)
 
 // BlockingQueueIterator abstract a interface of block queue iterator.
 type BlockingQueueIterator interface {
@@ -131,6 +142,21 @@ func (bq *blockingQueue) Poll() interface{} {
 	return bq.dequeue()
 }
 
+func (bq *blockingQueue) PollIfSatisfy(condition func(interface{}) bool) (item interface{}, empty bool, satisfy bool) {
+	bq.mutex.Lock()
+	defer bq.mutex.Unlock()
+
+	if bq.size == 0 {
+		return nil, true, false
+	}
+
+	if condition(bq.items[bq.headIdx]) {
+		return bq.dequeue(), false, true
+	}
+
+	return nil, false, false
+}
+
 func (bq *blockingQueue) Peek() interface{} {
 	bq.mutex.Lock()
 	defer bq.mutex.Unlock()
@@ -181,6 +207,27 @@ func (bq *blockingQueue) Iterator() BlockingQueueIterator {
 		bq:      bq,
 		readIdx: bq.headIdx,
 		toRead:  bq.size,
+	}
+}
+
+func (bq *blockingQueue) iterator() BlockingQueueIterator {
+	return &blockingQueueIterator{
+		bq:      bq,
+		readIdx: bq.headIdx,
+		toRead:  bq.size,
+	}
+}
+
+func (bq *blockingQueue) IterateIfNonEmpty(operation IterateFunc) {
+	bq.mutex.Lock()
+	defer bq.mutex.Unlock()
+	if bq.size > 0 {
+		for it := bq.iterator(); it.HasNext(); {
+			if operation(it.Next()) {
+				continue
+			}
+			break
+		}
 	}
 }
 

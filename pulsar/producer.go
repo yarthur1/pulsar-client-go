@@ -111,6 +111,10 @@ type ProducerOptions struct {
 	// If set to a value greater than 1, messages will be queued until this threshold is reached or
 	// batch interval has elapsed.
 	BatchingMaxMessages uint
+
+	// SendContextCheckInterval set the time period within which the messages sent will be
+	// checked for timeout (default: 10ms)
+	SendContextCheckInterval time.Duration
 }
 
 // Producer is used to publish messages on a topic
