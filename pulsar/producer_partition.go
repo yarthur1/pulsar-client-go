@@ -19,6 +19,7 @@ package pulsar
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -37,6 +38,11 @@ const (
 	producerReady
 	producerClosing
 	producerClosed
+)
+
+var (
+	errFailAddBatch    = errors.New("message send failed")
+	errMessageTooLarge = errors.New("message size exceeds MaxMessageSize")
 )
 
 type partitionProducer struct {
@@ -233,6 +239,16 @@ func (p *partitionProducer) internalSend(request *sendRequest) {    //发送单�
 
 	msg := request.msg
 
+	// if msg is too large
+	if len(msg.Payload) > int(p.cnx.GetMaxMessageSize()) {
+		p.publishSemaphore.Release()
+		request.callback(nil, request.msg, errMessageTooLarge)
+		p.log.WithField("size", len(msg.Payload)).
+			WithField("properties", msg.Properties).
+			WithError(errMessageTooLarge).Error()
+		return
+	}
+
 	deliverAt := msg.DeliverAt
 	if msg.DeliverAfter.Nanoseconds() > 0 {
 		deliverAt = time.Now().Add(msg.DeliverAfter)
@@ -265,35 +281,26 @@ func (p *partitionProducer) internalSend(request *sendRequest) {    //发送单�
 		sequenceID = internal.GetAndAdd(p.sequenceIDGenerator, 1)  //*****
 	}
 
-	if sendAsBatch {
-		added := p.batchBuilder.Add(smm, sequenceID, msg.Payload, request,  //确认request的callback在哪执行 以及ctx
-			msg.ReplicationClusters, deliverAt)
-		if !added {
-			// The current batch is full.. flush it and retry
-			p.internalFlushCurrentBatch()
+	added := p.batchBuilder.Add(smm, sequenceID, msg.Payload, request,
+		msg.ReplicationClusters, deliverAt)
+	if !added {
+		// The current batch is full.. flush it and retry
+		p.internalFlushCurrentBatch()
 
-			// after flushing try again to add the current payload
-			if ok := p.batchBuilder.Add(smm, sequenceID, msg.Payload, request,
-				msg.ReplicationClusters, deliverAt); !ok {
-				p.log.WithField("size", len(msg.Payload)).      //只是记录错误？ 不用callback和释放信号?
-					WithField("sequenceID", sequenceID).
-					WithField("properties", msg.Properties).
-					Error("unable to add message to batch")
-			}
-		}
-	} else {
-		// Send individually
-		if added := p.batchBuilder.Add(smm, sequenceID, msg.Payload, request,
-			msg.ReplicationClusters, deliverAt); !added {
+		// after flushing try again to add the current payload
+		if ok := p.batchBuilder.Add(smm, sequenceID, msg.Payload, request,
+			msg.ReplicationClusters, deliverAt); !ok {
+			p.publishSemaphore.Release()
+			request.callback(nil, request.msg, errFailAddBatch)
 			p.log.WithField("size", len(msg.Payload)).
 				WithField("sequenceID", sequenceID).
 				WithField("properties", msg.Properties).
-				Error("unable to send single message")
+				Error("unable to add message to batch")
+			return
 		}
-		p.internalFlushCurrentBatch()
 	}
 
-	if request.flushImmediately {
+	if !sendAsBatch || request.flushImmediately {
 		p.internalFlushCurrentBatch()
 	}
 }
