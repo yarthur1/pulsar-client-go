@@ -39,8 +39,8 @@ const (
 
 type client struct {
 	cnxPool       internal.ConnectionPool
-	rpcClient     internal.RPCClient
-	handlers      internal.ClientHandlers
+	rpcClient     internal.RPCClient         //调用cnx的发送接口
+	handlers      internal.ClientHandlers    //只有关闭功能
 	lookupService internal.LookupService
 }
 
@@ -107,7 +107,7 @@ func newClient(options ClientOptions) (Client, error) {
 func (c *client) CreateProducer(options ProducerOptions) (Producer, error) {
 	producer, err := newProducer(c, &options)
 	if err == nil {
-		c.handlers.Add(producer)
+		c.handlers.Add(producer)  //add close
 	}
 	return producer, err
 }
@@ -130,7 +130,7 @@ func (c *client) CreateReader(options ReaderOptions) (Reader, error) {
 	return reader, nil
 }
 
-func (c *client) TopicPartitions(topic string) ([]string, error) {
+func (c *client) TopicPartitions(topic string) ([]string, error) {  //获取topic分区 "%s-partition-%d"
 	topicName, err := internal.ParseTopicName(topic)
 	if err != nil {
 		return nil, err

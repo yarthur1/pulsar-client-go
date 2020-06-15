@@ -21,7 +21,7 @@ import "sync"
 
 // ClientHandlerMap is a simple concurrent-safe map for the client type
 type ClientHandlers struct {
-	handlers map[Closable]bool
+	handlers map[Closable]bool  //map把接口变量当做key
 	l        *sync.RWMutex
 }
 

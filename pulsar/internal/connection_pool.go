@@ -35,9 +35,9 @@ type ConnectionPool interface {
 	// Close all the connections in the pool
 	Close()
 }
-
+//并没有事先建立好连接  而是用的时候在创建
 type connectionPool struct {
-	pool              sync.Map
+	pool              sync.Map    //k:logicalAddr.Host  v:*connection
 	connectionTimeout time.Duration
 	tlsOptions        *TLSOptions
 	auth              auth.Provider

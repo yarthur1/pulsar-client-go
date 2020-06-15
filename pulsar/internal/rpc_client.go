@@ -36,7 +36,7 @@ type RPCResult struct {
 }
 
 type RPCClient interface {
-	// Create a new unique request id
+	// Create a new unique request id   一个client对应唯一的
 	NewRequestID() uint64
 
 	NewProducerID() uint64
@@ -58,7 +58,7 @@ type rpcClient struct {
 	serviceURL          *url.URL
 	pool                ConnectionPool
 	requestTimeout      time.Duration
-	requestIDGenerator  uint64
+	requestIDGenerator  uint64     //本地自增生成的，与broker交互即可？
 	producerIDGenerator uint64
 	consumerIDGenerator uint64
 
@@ -92,7 +92,7 @@ func (c *rpcClient) Request(logicalAddr *url.URL, physicalAddr *url.URL, request
 	}
 	ch := make(chan Res, 10)
 
-	// TODO: in here, the error of callback always nil
+	// TODO: in here, the error of callback always nil   connection.go  502 line
 	cnx.SendRequest(requestID, baseCommand(cmdType, message), func(response *pb.BaseCommand, err error) {
 		ch <- Res{&RPCResult{
 			Cnx:      cnx,
@@ -105,7 +105,7 @@ func (c *rpcClient) Request(logicalAddr *url.URL, physicalAddr *url.URL, request
 	case res := <-ch:
 		return res.RPCResult, res.error
 	case <-time.After(c.requestTimeout):
-		return nil, errors.New("request timed out")
+		return nil, errors.New("request timed out")  //超时直接返回 后续收到响应怎么处理 handleResponse会调用callback
 	}
 }
 

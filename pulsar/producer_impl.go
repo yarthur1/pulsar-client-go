@@ -76,7 +76,7 @@ func newProducer(client *client, options *ProducerOptions) (*producer, error) {
 	}
 
 	if options.MessageRouter == nil {
-		internalRouter := internal.NewDefaultRouter(
+		internalRouter := internal.NewDefaultRouter(  //msg router
 			internal.NewSystemClock(),
 			getHashingFunction(options.HashingScheme),
 			batchingMaxPublishDelay, options.DisableBatching)
@@ -92,7 +92,7 @@ func newProducer(client *client, options *ProducerOptions) (*producer, error) {
 		return nil, err
 	}
 
-	p.ticker = time.NewTicker(partitionsAutoDiscoveryInterval)
+	p.ticker = time.NewTicker(partitionsAutoDiscoveryInterval) //1 min
 
 	go func() {
 		for range p.ticker.C {
@@ -200,7 +200,7 @@ func (p *producer) NumPartitions() uint32 {
 
 func (p *producer) Send(ctx context.Context, msg *ProducerMessage) (MessageID, error) {
 	p.Lock()
-	partition := p.messageRouter(msg, p)
+	partition := p.messageRouter(msg, p)  //相同的key映射到同一个partition_producer
 	pp := p.producers[partition]
 	p.Unlock()
 

@@ -50,11 +50,11 @@ type partitionProducer struct {
 	client *client
 	topic  string
 	log    *log.Entry
-	cnx    internal.Connection
+	cnx    internal.Connection   //与broker之间的连接，在创建producer成功时返回的连接
 
 	options             *ProducerOptions
 	producerName        string
-	producerID          uint64
+	producerID          uint64     //先是由rpcClient生成的，创建producer时需要和broker确认
 	batchBuilder        *internal.BatchBuilder   //构建批数据
 	sequenceIDGenerator *uint64     //初始值为create_producer resp.GetLastSequenceId() + 1
 	batchFlushTicker    *time.Ticker
@@ -143,7 +143,7 @@ func (p *partitionProducer) grabCnx() error {
 	if len(p.options.Properties) > 0 {
 		cmdProducer.Metadata = toKeyValues(p.options.Properties)
 	}
-	res, err := p.client.rpcClient.Request(lr.LogicalAddr, lr.PhysicalAddr, id, pb.BaseCommand_PRODUCER, cmdProducer)
+	res, err := p.client.rpcClient.Request(lr.LogicalAddr, lr.PhysicalAddr, id, pb.BaseCommand_PRODUCER, cmdProducer)  //真正创建producer
 	if err != nil {
 		p.log.WithError(err).Error("Failed to create producer")
 		return err
@@ -169,7 +169,7 @@ func (p *partitionProducer) grabCnx() error {
 	if p.pendingQueue.Size() > 0 {
 		p.log.Infof("Resending %d pending batches", p.pendingQueue.Size())
 		for it := p.pendingQueue.Iterator(); it.HasNext(); {
-			p.cnx.WriteData(it.Next().(*pendingItem).batchData)  //
+			p.cnx.WriteData(it.Next().(*pendingItem).batchData)  //？
 		}
 	}
 	return nil
@@ -177,13 +177,13 @@ func (p *partitionProducer) grabCnx() error {
 
 type connectionClosed struct{}
 
-func (p *partitionProducer) ConnectionClosed() {
+func (p *partitionProducer) ConnectionClosed() {   //connection  handleCloseProducer会调用
 	// Trigger reconnection in the produce goroutine
 	p.log.WithField("cnx", p.cnx.ID()).Warn("Connection was closed")
 	p.eventsChan <- &connectionClosed{}
 }
 
-func (p *partitionProducer) reconnectToBroker() {
+func (p *partitionProducer) reconnectToBroker() {  //重新设置partitionproducer的相关值，会将已插入队列的数据先发送出去
 	backoff := internal.Backoff{}       //退避算法
 	for {
 		if atomic.LoadInt32(&p.state) != producerReady {

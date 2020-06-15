@@ -145,12 +145,12 @@ type connection struct {
 
 	requestIDGenerator uint64
 
-	incomingRequestsCh chan *request       //
+	incomingRequestsCh chan *request       //发送基本cmd
 	incomingCmdCh      chan *incomingCmd   //
 	closeCh            chan interface{}
 	writeRequestsCh    chan []byte         //
 
-	pendingReqs map[uint64]*request     //记录发送的命令请求 id req
+	pendingReqs map[uint64]*request     //记录发送的命令cmd请求 id req
 	listeners   map[uint64]ConnectionListener
 
 	consumerHandlersLock sync.RWMutex
@@ -315,7 +315,7 @@ func (c *connection) waitUntilReady() error {
 
 func (c *connection) run() {
 	// All reads come from the reader goroutine
-	go c.reader.readFromConnection()
+	go c.reader.readFromConnection()   //***
 	go c.runPingCheck()
 
 	for {
@@ -330,7 +330,7 @@ func (c *connection) run() {
 			}
 			c.internalSendRequest(req)   //发送basecmd  rpc_client使用SendRequest SendRequestNoWait
 
-		case cmd := <-c.incomingCmdCh:  //处理接收的cmd connection_reader调用receivedCommand 所有接收到的数据
+		case cmd := <-c.incomingCmdCh:  //处理接收的数据 connection_reader调用receivedCommand 所有接收到的数据
 			c.internalReceivedCommand(cmd.cmd, cmd.headersAndPayload)
 
 		case data := <-c.writeRequestsCh:  //发送batch数据
@@ -445,9 +445,9 @@ func (c *connection) internalReceivedCommand(cmd *pb.BaseCommand, headersAndPayl
 	case pb.BaseCommand_SEND_RECEIPT:      //producer
 		c.handleSendReceipt(cmd.GetSendReceipt())
 
-	case pb.BaseCommand_SEND_ERROR:
+	case pb.BaseCommand_SEND_ERROR:        //?
 
-	case pb.BaseCommand_MESSAGE:
+	case pb.BaseCommand_MESSAGE:           //consumer
 		c.handleMessage(cmd.GetMessage(), headersAndPayload)
 
 	case pb.BaseCommand_PING:
@@ -499,7 +499,7 @@ func (c *connection) handleResponse(requestID uint64, response *pb.BaseCommand) 
 	}
 
 	delete(c.pendingReqs, requestID)
-	request.callback(response, nil)
+	request.callback(response, nil)   //*****
 }
 
 func (c *connection) handleResponseError(serverError *pb.CommandError) {
