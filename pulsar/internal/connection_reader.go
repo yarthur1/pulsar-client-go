@@ -103,7 +103,7 @@ func (r *connectionReader) readSingleCommand() (cmd *pb.BaseCommand, headersAndP
 	return cmd, headersAndPayload, nil
 }
 
-func (r *connectionReader) readAtLeast(size uint32) error {
+func (r *connectionReader) readAtLeast(size uint32) error {  //读多少个字节到buffer
 	if r.buffer.WritableBytes() < size {
 		// There's not enough room in the current buffer to read the requested amount of data
 		totalFrameSize := r.buffer.ReadableBytes() + size

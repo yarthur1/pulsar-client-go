@@ -72,7 +72,7 @@ func (p *connectionPool) GetConnection(logicalAddr *url.URL, physicalAddr *url.U
 	newCnx, wasCached := p.pool.LoadOrStore(logicalAddr.Host, newConnection)
 	cnx := newCnx.(*connection)
 	if !wasCached {
-		cnx.start()
+		cnx.start()    //
 	} else {
 		newConnection.Close()
 	}

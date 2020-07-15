@@ -363,7 +363,7 @@ func (pc *partitionConsumer) internalAck(req *ackRequest) {
 	pc.client.rpcClient.RequestOnCnxNoWait(pc.conn, pb.BaseCommand_ACK, cmdAck)
 }
 
-func (pc *partitionConsumer) MessageReceived(response *pb.CommandMessage, headersAndPayload internal.Buffer) error {
+func (pc *partitionConsumer) MessageReceived(response *pb.CommandMessage, headersAndPayload internal.Buffer) error {  //放到queueCh
 	pbMsgID := response.GetMessageId()
 
 	reader := internal.NewMessageReader(headersAndPayload)
@@ -714,7 +714,7 @@ func (pc *partitionConsumer) reconnectToBroker() {
 	}
 }
 
-func (pc *partitionConsumer) grabConn() error {
+func (pc *partitionConsumer) grabConn() error {    //与broker建立连接  返回cnx
 	lr, err := pc.client.lookupService.Lookup(pc.topic)
 	if err != nil {
 		pc.log.WithError(err).Warn("Failed to lookup topic")
@@ -771,7 +771,7 @@ func (pc *partitionConsumer) grabConn() error {
 
 	pc.conn = res.Cnx
 	pc.log.Info("Connected consumer")
-	pc.conn.AddConsumeHandler(pc.consumerID, pc)
+	pc.conn.AddConsumeHandler(pc.consumerID, pc)     //注册
 
 	msgType := res.Response.GetType()
 

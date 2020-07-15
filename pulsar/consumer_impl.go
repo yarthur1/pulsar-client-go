@@ -43,25 +43,25 @@ type acker interface {
 type consumer struct {
 	sync.Mutex
 	topic                     string
-	client                    *client
+	client                    *client    //c.client.handlers.Del(c)
 	options                   ConsumerOptions
 	consumers                 []*partitionConsumer
 	consumerName              string
 	disableForceTopicCreation bool
 
 	// channel used to deliver message to clients
-	messageCh chan ConsumerMessage
+	messageCh chan ConsumerMessage   //分区consumer都用这个
 
 	dlq       *dlqRouter
 	closeOnce sync.Once
 	closeCh   chan struct{}
 	errorCh   chan error
-	ticker    *time.Ticker
+	ticker    *time.Ticker    // AutoDiscoveryPeriod consumer数量
 
 	log *log.Entry
 }
 
-func newConsumer(client *client, options ConsumerOptions) (Consumer, error) {
+func newConsumer(client *client, options ConsumerOptions) (Consumer, error) {          //enter point
 	if options.Topic == "" && options.Topics == nil && options.TopicsPattern == "" {
 		return nil, newError(TopicNotFound, "topic is required")
 	}
@@ -239,7 +239,7 @@ func (c *consumer) internalTopicSubscribeToPartitions() error {
 				subscriptionMode:           durable,
 				readCompacted:              c.options.ReadCompacted,
 			}
-			cons, err := newPartitionConsumer(c, c.client, opts, c.messageCh, c.dlq)
+			cons, err := newPartitionConsumer(c, c.client, opts, c.messageCh, c.dlq)  //传入messageCh
 			ch <- ConsumerError{
 				err:       err,
 				partition: idx,

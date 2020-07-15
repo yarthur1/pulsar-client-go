@@ -134,7 +134,7 @@ type connection struct {
 
 	writeBufferLock sync.Mutex
 	writeBuffer     Buffer
-	reader          *connectionReader
+	reader          *connectionReader   //获取数据
 
 	lastDataReceivedLock sync.Mutex
 	lastDataReceivedTime time.Time
@@ -151,10 +151,10 @@ type connection struct {
 	writeRequestsCh    chan []byte         //
 
 	pendingReqs map[uint64]*request     //记录发送的命令cmd请求 id req
-	listeners   map[uint64]ConnectionListener
+	listeners   map[uint64]ConnectionListener         //producer
 
 	consumerHandlersLock sync.RWMutex
-	consumerHandlers     map[uint64]ConsumerHandler
+	consumerHandlers     map[uint64]ConsumerHandler   //consumer
 
 	tlsOptions *TLSOptions
 	auth       auth.Provider
@@ -166,7 +166,7 @@ func newConnection(logicalAddr *url.URL, physicalAddr *url.URL, tlsOptions *TLSO
 	connectionTimeout time.Duration, auth auth.Provider) *connection {
 	cnx := &connection{
 		state:                connectionInit,
-		connectionTimeout:    connectionTimeout,
+		connectionTimeout:    connectionTimeout,   //首次连接使用 dial
 		logicalAddr:          logicalAddr,
 		physicalAddr:         physicalAddr,
 		writeBuffer:          NewBuffer(4096),
@@ -602,7 +602,7 @@ func (c *connection) handleCloseConsumer(closeConsumer *pb.CommandCloseConsumer)
 
 	if consumer, ok := c.consumerHandler(consumerID); ok {
 		consumer.ConnectionClosed()
-		delete(c.listeners, consumerID)
+		delete(c.listeners, consumerID)  //删除原来的consumer
 	} else {
 		c.log.WithField("consumerID", consumerID).Warnf("Consumer with ID not found while closing consumer")
 	}
@@ -616,7 +616,7 @@ func (c *connection) handleCloseProducer(closeProducer *pb.CommandCloseProducer)
 	defer c.Unlock()
 	if producer, ok := c.listeners[producerID]; ok {
 		producer.ConnectionClosed()
-		delete(c.listeners, producerID)
+		delete(c.listeners, producerID)  //删除原来的producer
 	} else {
 		c.log.WithField("producerID", producerID).Warn("Producer with ID not found while closing producer")
 	}
