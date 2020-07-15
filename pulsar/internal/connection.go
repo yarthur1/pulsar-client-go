@@ -108,7 +108,7 @@ func (s connectionState) String() string {
 	}
 }
 
-const keepAliveInterval = 30 * time.Second
+const keepAliveInterval = 5 * time.Second
 
 type request struct {
 	id       *uint64

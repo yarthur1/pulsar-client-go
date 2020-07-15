@@ -770,7 +770,7 @@ func (pc *partitionConsumer) grabConn() error {
 	}
 
 	pc.conn = res.Cnx
-	pc.log.Info("Connected consumer")
+	pc.log.Info("Connected consumer,yxj")
 	pc.conn.AddConsumeHandler(pc.consumerID, pc)
 
 	msgType := res.Response.GetType()
