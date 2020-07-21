@@ -59,7 +59,7 @@ type rpcClient struct {
 	pool                ConnectionPool
 	requestTimeout      time.Duration
 	requestIDGenerator  uint64     //本地自增生成的，与broker交互即可？
-	producerIDGenerator uint64
+	producerIDGenerator uint64     //本地自增生成的，只需与broker确认即可
 	consumerIDGenerator uint64
 
 	log *log.Entry

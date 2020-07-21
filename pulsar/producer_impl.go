@@ -105,7 +105,7 @@ func newProducer(client *client, options *ProducerOptions) (*producer, error) {
 }
 
 func (p *producer) internalCreatePartitionsProducers() error {
-	partitions, err := p.client.TopicPartitions(p.topic)  //?
+	partitions, err := p.client.TopicPartitions(p.topic)  //partitions结果的顺序是固定的吗
 	if err != nil {
 		return err
 	}

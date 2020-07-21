@@ -48,13 +48,13 @@ var (
 type partitionProducer struct {
 	state  int32
 	client *client
-	topic  string
+	topic  string                //传入的分区topic名
 	log    *log.Entry
 	cnx    internal.Connection   //与broker之间的连接，在创建producer成功时返回的连接
 
 	options             *ProducerOptions
 	producerName        string
-	producerID          uint64     //先是由rpcClient生成的，创建producer时需要和broker确认
+	producerID          uint64     //先是由rpcClient生成的，producerIDGenerator加一，创建producer时需要和broker确认
 	batchBuilder        *internal.BatchBuilder   //构建批数据
 	sequenceIDGenerator *uint64     //初始值为create_producer resp.GetLastSequenceId() + 1
 	batchFlushTicker    *time.Ticker
@@ -66,7 +66,7 @@ type partitionProducer struct {
 	pendingQueue     internal.BlockingQueue    //批数据发送之前 会放到队列里面
 	lastSequenceID   int64
 
-	partitionIdx int
+	partitionIdx int   //上层producer的index
 }
 
 func newPartitionProducer(client *client, topic string, options *ProducerOptions, partitionIdx int) (
@@ -132,7 +132,7 @@ func (p *partitionProducer) grabCnx() error {
 		RequestId:  proto.Uint64(id),
 		Topic:      proto.String(p.topic),
 		Encrypted:  nil,
-		ProducerId: proto.Uint64(p.producerID),
+		ProducerId: proto.Uint64(p.producerID),   //为原来的值 没有改变
 		Schema:     nil,
 	}
 
