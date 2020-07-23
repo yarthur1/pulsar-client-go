@@ -196,7 +196,7 @@ func newConnection(logicalAddr *url.URL, physicalAddr *url.URL, tlsOptions *TLSO
 		physicalAddr:         physicalAddr,
 		writeBuffer:          NewBuffer(4096),
 		log:                  log.WithField("remote_addr", physicalAddr),
-		pendingReqs:          make(map[uint64]*request),
+		pendingReqs:          make(map[uint64]*request),   //?
 		lastDataReceivedTime: time.Now(),
 		pingTicker:           time.NewTicker(keepAliveInterval),
 		pingCheckTicker:      time.NewTicker(keepAliveInterval),
@@ -212,7 +212,7 @@ func newConnection(logicalAddr *url.URL, physicalAddr *url.URL, tlsOptions *TLSO
 		// partition produces writing on a single connection. In general it's
 		// good to keep this above the number of partition producers assigned
 		// to a single connection.
-		writeRequestsCh:  make(chan Buffer, 256),
+		writeRequestsCh:  make(chan Buffer, 256),  //?
 		listeners:        make(map[uint64]ConnectionListener),
 		consumerHandlers: make(map[uint64]ConsumerHandler),
 	}

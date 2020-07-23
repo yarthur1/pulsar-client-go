@@ -55,7 +55,7 @@ type producer struct {
 	options       *ProducerOptions
 	topic         string
 	producers     []Producer
-	producersPtr  unsafe.Pointer
+	producersPtr  unsafe.Pointer   //指向producers slice
 	numPartitions uint32
 	messageRouter func(*ProducerMessage, TopicMetadata) int
 	ticker        *time.Ticker

@@ -93,7 +93,7 @@ type partitionProducer struct {
 	cnx    internal.Connection
 
 	options             *ProducerOptions
-	producerName        string
+	producerName        string            //如果不设置，由broker生成
 	producerID          uint64
 	batchBuilder        *internal.BatchBuilder
 	sequenceIDGenerator *uint64
@@ -132,7 +132,7 @@ func newPartitionProducer(client *client, topic string, options *ProducerOptions
 		topic:            topic,
 		options:          options,
 		producerID:       client.rpcClient.NewProducerID(),
-		eventsChan:       make(chan interface{}, maxPendingMessages),
+		eventsChan:       make(chan interface{}, maxPendingMessages),   //
 		batchFlushTicker: time.NewTicker(batchingMaxPublishDelay),
 		publishSemaphore: internal.NewSemaphore(int32(maxPendingMessages)),
 		pendingQueue:     internal.NewBlockingQueue(maxPendingMessages),
@@ -208,7 +208,7 @@ func (p *partitionProducer) grabCnx() error {
 	p.cnx.RegisterListener(p.producerID, p)
 	p.log.WithField("cnx", res.Cnx.ID()).Debug("Connected producer")
 
-	pendingItems := p.pendingQueue.ReadableSlice()
+	pendingItems := p.pendingQueue.ReadableSlice()  //
 	if len(pendingItems) > 0 {
 		p.log.Infof("Resending %d pending batches", len(pendingItems))
 		for _, pi := range pendingItems {
@@ -220,7 +220,7 @@ func (p *partitionProducer) grabCnx() error {
 
 type connectionClosed struct{}
 
-func (p *partitionProducer) GetBuffer() internal.Buffer {
+func (p *partitionProducer) GetBuffer() internal.Buffer {  //返回一个清空的buffer
 	b, ok := buffersPool.Get().(internal.Buffer)
 	if ok {
 		b.Clear()
