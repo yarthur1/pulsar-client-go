@@ -139,7 +139,9 @@ func newPartitionConsumer(parent Consumer, client *client, options *partitionCon
 		dlq:            dlq,
 		log:            log.WithField("topic", options.topic),
 	}
-	pc.log = pc.log.WithField("name", pc.name).WithField("subscription", options.subscription)
+	pc.log = pc.log.WithField("name", pc.name).
+		WithField("subscription", options.subscription).
+		WithField("consumerID", pc.consumerID)
 	pc.nackTracker = newNegativeAcksTracker(pc, options.nackRedeliveryDelay)
 
 	err := pc.grabConn()
@@ -770,7 +772,7 @@ func (pc *partitionConsumer) grabConn() error {
 	}
 
 	pc.conn = res.Cnx
-	pc.log.Info("Connected consumer,yxj")
+	pc.log.Info("Connected consumer,yxj123")
 	pc.conn.AddConsumeHandler(pc.consumerID, pc)
 
 	msgType := res.Response.GetType()
