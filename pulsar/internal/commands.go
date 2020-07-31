@@ -21,13 +21,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/apache/pulsar-client-go/pulsar/internal/compression"
+	"github.com/yarthur1/pulsar-client-go/pulsar/internal/compression"
 
 	"github.com/gogo/protobuf/proto"
 
 	log "github.com/sirupsen/logrus"
 
-	pb "github.com/apache/pulsar-client-go/pulsar/internal/pulsar_proto"
+	pb "github.com/yarthur1/pulsar-client-go/pulsar/internal/pulsar_proto"
 )
 
 const (

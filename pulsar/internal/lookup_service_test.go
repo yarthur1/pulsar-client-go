@@ -21,7 +21,7 @@ import (
 	"net/url"
 	"testing"
 
-	pb "github.com/apache/pulsar-client-go/pulsar/internal/pulsar_proto"
+	pb "github.com/yarthur1/pulsar-client-go/pulsar/internal/pulsar_proto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 )

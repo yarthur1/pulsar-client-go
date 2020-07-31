@@ -27,14 +27,14 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	"github.com/apache/pulsar-client-go/pulsar/internal/compression"
+	"github.com/yarthur1/pulsar-client-go/pulsar/internal/compression"
 
 	"github.com/gogo/protobuf/proto"
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/apache/pulsar-client-go/pulsar/internal"
-	pb "github.com/apache/pulsar-client-go/pulsar/internal/pulsar_proto"
+	"github.com/yarthur1/pulsar-client-go/pulsar/internal"
+	pb "github.com/yarthur1/pulsar-client-go/pulsar/internal/pulsar_proto"
 )
 
 const (

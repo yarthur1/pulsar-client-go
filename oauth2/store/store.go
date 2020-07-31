@@ -20,7 +20,7 @@ package store
 import (
 	"errors"
 
-	"github.com/apache/pulsar-client-go/oauth2"
+	"github.com/yarthur1/pulsar-client-go/oauth2"
 )
 
 // ErrNoAuthenticationData indicates that stored authentication data is not available

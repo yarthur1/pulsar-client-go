@@ -30,7 +30,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/apache/pulsar-client-go/pulsar"
+	"github.com/yarthur1/pulsar-client-go/pulsar"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 

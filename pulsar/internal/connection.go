@@ -35,8 +35,8 @@ import (
 	"github.com/gogo/protobuf/proto"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/apache/pulsar-client-go/pulsar/internal/auth"
-	pb "github.com/apache/pulsar-client-go/pulsar/internal/pulsar_proto"
+	"github.com/yarthur1/pulsar-client-go/pulsar/internal/auth"
+	pb "github.com/yarthur1/pulsar-client-go/pulsar/internal/pulsar_proto"
 )
 
 const (
