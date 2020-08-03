@@ -213,7 +213,7 @@ func (p *partitionProducer) grabCnx() error {
 	if len(pendingItems) > 0 {
 		p.log.Infof("Resending %d pending batches", len(pendingItems))
 		for _, pi := range pendingItems {
-			p.cnx.WriteData(pi.(*pendingItem).batchData)
+			p.cnx.WriteData(pi.(*pendingItem).batchData)        //重连时会重新发送没有ack的消息  important
 		}
 	}
 	return nil
